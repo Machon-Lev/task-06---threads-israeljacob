@@ -4,74 +4,87 @@
 #include<mutex>
 #include"Message.h"
 
-
 std::vector<Message> messages;
 std::mutex mtx_double;
 
-void insert_double(std::vector<Message>& messages, const int millisecondsToWait)
-{
-	std::thread::id corrent_thread = std::this_thread::get_id();
-	double corrent_num = std::hash<std::thread::id>{}(std::this_thread::get_id());
-	Message message = Message();
-	while (corrent_num != 0)
-	{
-		if (corrent_num / (double)10 == 0)
-		{
-			std::lock_guard lck_names(mtx_double);
-			messages.push_back(Message(corrent_thread, corrent_num, true));
-		}
-		else
-		{
-			std::lock_guard lck_names(mtx_double);
-			messages.push_back(Message(corrent_thread, corrent_num, false));
-		}
-		corrent_num /= (double)10;
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(millisecondsToWait));
-	}
+ //Inserts messages that contain double values until it reaches 0.
+void insert_double()
+{
+    std::thread::id corrent_thread = std::this_thread::get_id();
+    double corrent_num = std::hash<std::thread::id>{}(std::this_thread::get_id());
+    Message message = Message();
+
+    // Loop until the current number becomes zero
+    while (corrent_num != 0)
+    {
+        // Check if the current digit is the last digit
+        if (corrent_num / (double)10 == 0)
+        {
+            std::lock_guard lck_names(mtx_double);
+            messages.push_back(Message(corrent_thread, corrent_num, true)); // Create a new "finished" message and add it to the vector
+        }
+        else
+        {
+            std::lock_guard lck_names(mtx_double);
+            messages.push_back(Message(corrent_thread, corrent_num, false)); // Create a new message with a sent value and add it to the vector
+        }
+        corrent_num /= (double)10;
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(30)); // Wait for 30 milliseconds
+    }
 }
 
-void print_messages(std::vector<Message>& messages, const int millisecondsToWait)
+
+ //Prints all the messages stored in the vector.
+void print_messages()
 {
-	int finished_ctr = 0;
-	bool there_is_a_new_message = false;
-	Message message;
+    int finished_ctr = 0;
+    bool there_is_a_new_message = false;
+    Message message;
 
-	while (finished_ctr < 2) 
-	{
-		{
-			std::lock_guard lck_names(mtx_double);
-			if (!messages.empty())
-			{
-				there_is_a_new_message = true;
-				message = messages.back();
-				messages.pop_back();
-			}
-		}
-		if (there_is_a_new_message)
-		{
-			if (message.flag)
-			{ 
-				std::cout << message.thread << " finished" << std::endl;
-				++finished_ctr;
-			}
-			else
-				std::cout << message.thread << " sent: " << message.num << std::endl;
-		}
+    // Continue until at least one thread did not reach 0 yet
+    while (finished_ctr < 2)
+    {
+        {
+            std::lock_guard lck_names(mtx_double);
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(millisecondsToWait));
-	}
+            // Check if the messages vector is not empty
+            if (!messages.empty())
+            {
+                there_is_a_new_message = true;
+                message = messages.back(); // Retrieve the last message from the vector
+                messages.pop_back(); // Remove the message from the vector
+            }
+        }
+
+        // Check if there is a new message available
+        if (there_is_a_new_message)
+        {
+            // Check if the message represents a "finished" status
+            if (message.flag)
+            {
+                std::cout << message.thread << " finished" << std::endl; // Print the thread ID followed by "finished"
+                ++finished_ctr; // Increment the counter of "finished" messages
+            }
+            else
+                std::cout << message.thread << " sent: " << message.num << std::endl; // Print the thread ID and the sent value
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(20)); // Wait for 20 milliseconds
+    }
 }
-
 
 int main()
 {
-	std::thread tOut(print_messages, ref(messages), 20);
-	std::thread tIn1(insert_double, ref(messages), 30);
-	std::thread tIn2(insert_double, ref(messages), 30);
-	
-	tIn1.join();
-	tIn2.join();
-	tOut.join();
-	return 0;
+    // Create threads for printing messages and inserting double values
+    std::thread tOut(print_messages);
+    std::thread tIn1(insert_double);
+    std::thread tIn2(insert_double);
+
+    // Wait for the threads to finish
+    tIn1.join();
+    tIn2.join();
+    tOut.join();
+    return 0;
 }
