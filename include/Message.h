@@ -1,6 +1,8 @@
 #pragma once
-class Message {
-public:
-	std::thread::id thread;
+#include<thread>
 
+struct  Message{
+	std::thread::id thread = std::this_thread::get_id();
+	double num;
+	bool flag;
 };

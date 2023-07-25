@@ -1,6 +1,5 @@
 #include<iostream>
 #include<vector>
-#include<thread>
 #include<mutex>
 #include"Message.h"
 
@@ -11,7 +10,7 @@ std::mutex mtx_double;
  //Inserts messages that contain double values until it reaches 0.
 void insert_double()
 {
-    std::thread::id corrent_thread = std::this_thread::get_id();
+    std::thread::id corrent_thread;
     double corrent_num = std::hash<std::thread::id>{}(std::this_thread::get_id());
     Message message = Message();
 
